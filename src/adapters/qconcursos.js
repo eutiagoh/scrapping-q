@@ -19,8 +19,8 @@ export async function loginQConcursos(email, password) {
   const page = await context.newPage();
   await page.goto(LOGIN_URL, { waitUntil: "domcontentloaded" });
 
-  await page.fill('input[type="email"], input[name="email"]', email);
-  await page.fill('input[type="password"], input[name="password"]', password);
+  await page.fill('#login_email', email);
+  await page.fill('#login_password', password);
   await Promise.all([
     page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => null),
     page.click('button[type="submit"]'),
