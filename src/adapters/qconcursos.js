@@ -77,23 +77,40 @@ export async function answerAndReadCorrect(page, questionUrl) {
   const firstAlt = page.locator('label.js-choose-alternative').first();
   await firstAlt.click({ timeout: 5000 });
 
-  // Prepara para capturar a resposta da API do QConcursos
-  const responsePromise = page.waitForResponse(
-    (response) => response.url().includes('/respostas') && response.status() === 200,
-    { timeout: 15000 }
-  );
-
-  // Botão "Responder"
+  // Tenta encontrar a resposta pelo DOM se a API falhar
   await page.locator('button:has-text("Responder"), button:has-text("Enviar")').first().click({ timeout: 5000 });
+  await page.waitForTimeout(2500); // Aguarda o ajax/animações
 
-  // Aguarda a resposta da API
-  const apiResponse = await responsePromise;
-  const json = await apiResponse.json();
-  
-  const letter = json.correct_alternative?.toUpperCase() || json.gabarito?.toUpperCase();
-  
+  // Verifica se apareceu o modal de limite de 10 questões
+  const limitModal = await page.locator(':text-matches("Limite de 10 questões", "i")').count();
+  if (limitModal > 0) {
+    throw new Error("Limite de 10 questões diárias do QConcursos atingido na conta gratuita.");
+  }
+
+  // No QConcursos, após responder, a alternativa correta costuma receber uma classe específica ou
+  // o gabarito é revelado num bloco de estatísticas.
+  // Vamos procurar a div do gabarito (que é mostrada em contas premium ou quando erramos)
+  let letter = await page.evaluate(() => {
+    // Procura por "Gabarito: A"
+    const textNodes = document.body.innerText;
+    const match = textNodes.match(/Gabarito:?\s*([A-E])/i);
+    if (match) return match[1].toUpperCase();
+
+    // Procura se alguma alternativa ganhou classe de correta (ex: is-correct)
+    const correctAlt = document.querySelector('.is-correct input, .correct input, .q-correct-option input, .js-correct-alternative input');
+    if (correctAlt && correctAlt.value) return correctAlt.value.toUpperCase();
+
+    return null;
+  });
+
   if (!letter) {
-    throw new Error(`Could not parse correct answer from API response: ${JSON.stringify(json)}`);
+    // Se o robô chutou a opção "A" e acertou, a tela diz "Parabéns, você acertou!" e não mostra o gabarito
+    const hasSuccess = await page.locator('.q-correct, .js-response-correct, :text-matches("Você acertou", "i")').count();
+    if (hasSuccess > 0) {
+      letter = 'A'; // Sabendo que chutamos a primeira (A)
+    } else {
+      throw new Error(`Could not parse correct answer. Maybe UI changed or account is limited. URL: ${questionUrl}`);
+    }
   }
 
   return { external_id: externalId, correct_answer: letter, source_url: questionUrl };
