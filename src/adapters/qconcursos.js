@@ -75,7 +75,7 @@ export async function answerAndReadCorrect(page, questionUrl) {
 
   // Seleciona primeira alternativa (rádio) — QConcursos costuma usar labels "A", "B"...
   const firstAlt = page.locator('input[type="radio"]').first();
-  await firstAlt.check({ timeout: 5000 });
+  await firstAlt.check({ timeout: 5000, force: true });
 
   // Botão "Responder"
   await page.locator('button:has-text("Responder"), button:has-text("Enviar")').first().click({ timeout: 5000 });
