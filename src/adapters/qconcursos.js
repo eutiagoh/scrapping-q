@@ -77,18 +77,24 @@ export async function answerAndReadCorrect(page, questionUrl) {
   const firstAlt = page.locator('label.js-choose-alternative').first();
   await firstAlt.click({ timeout: 5000 });
 
+  // Prepara para capturar a resposta da API do QConcursos
+  const responsePromise = page.waitForResponse(
+    (response) => response.url().includes('/respostas') && response.status() === 200,
+    { timeout: 15000 }
+  );
+
   // Botão "Responder"
   await page.locator('button:has-text("Responder"), button:has-text("Enviar")').first().click({ timeout: 5000 });
 
-  // Aguarda o gabarito aparecer. Ajuste seletor conforme mudanças no site.
-  const correctLocator = page
-    .locator('[class*="gabarito" i], [class*="correct" i], :text-matches("Gabarito:?\\s*[A-E]", "i")')
-    .first();
-  await correctLocator.waitFor({ timeout: 15_000 });
-
-  const text = await correctLocator.innerText();
-  const letter = text.match(/[A-E]/i)?.[0]?.toUpperCase();
-  if (!letter) throw new Error(`Could not parse correct answer from: ${text}`);
+  // Aguarda a resposta da API
+  const apiResponse = await responsePromise;
+  const json = await apiResponse.json();
+  
+  const letter = json.correct_alternative?.toUpperCase() || json.gabarito?.toUpperCase();
+  
+  if (!letter) {
+    throw new Error(`Could not parse correct answer from API response: ${JSON.stringify(json)}`);
+  }
 
   return { external_id: externalId, correct_answer: letter, source_url: questionUrl };
 }
