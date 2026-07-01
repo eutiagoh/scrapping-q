@@ -74,8 +74,8 @@ export async function answerAndReadCorrect(page, questionUrl) {
   if (!externalId) throw new Error(`Cannot parse external id from ${questionUrl}`);
 
   // Seleciona primeira alternativa (rádio) — QConcursos costuma usar labels "A", "B"...
-  const firstAlt = page.locator('input[type="radio"]').first();
-  await firstAlt.check({ timeout: 5000, force: true });
+  const firstAlt = page.locator('label.js-choose-alternative').first();
+  await firstAlt.click({ timeout: 5000 });
 
   // Botão "Responder"
   await page.locator('button:has-text("Responder"), button:has-text("Enviar")').first().click({ timeout: 5000 });
