@@ -1,4 +1,7 @@
-import { chromium } from "playwright";
+import { chromium } from "playwright-extra";
+import stealthPlugin from "puppeteer-extra-plugin-stealth";
+
+chromium.use(stealthPlugin());
 
 const LOGIN_URL = "https://www.qconcursos.com/conta/entrar";
 
